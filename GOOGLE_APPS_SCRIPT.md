@@ -287,7 +287,7 @@ function sendSelectionEmails() {
 }
 
 /**
- * 3. WEBHOOK RECEIVER (POST / GET): AUTOMATICALLY TRIGGER FORMATTING UPON SYNCHRONIZATION
+ * 3. WEBHOOK RECEIVER (POST / GET): AUTOMATICALLY TRIGGER FORMATTING & REAL-TIME REGISTRATION INSERTION
  */
 function doGet(e) {
   try {
@@ -305,7 +305,130 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  return doGet(e);
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return doGet(e);
+    }
+    
+    const payload = JSON.parse(e.postData.contents);
+    const action = payload.action;
+    const spreadsheetId = payload.spreadsheetId;
+    
+    if (action === 'submit_student' && spreadsheetId && payload.student) {
+      let ss;
+      try {
+        ss = SpreadsheetApp.openById(spreadsheetId);
+      } catch (openErr) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: 'error',
+          message: 'Gagal membuka spreadsheet ID: ' + openErr.toString()
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      let sheet = ss.getSheetByName('Sheet1');
+      if (!sheet) {
+        sheet = ss.getSheets()[0]; // Fallback ke sheet pertama
+      }
+      
+      const student = payload.student;
+      const p = student.profile || {};
+      const pathw = p.pathwayInfo || {};
+      
+      // Pemetaan Terperinci ke 39 Kolom
+      const rowData = [
+        student.pendaftaranId || "-",
+        student.name || "-",
+        student.email || "-",
+        student.registrationStatus || "-",
+        student.notes || "-",
+        student.registeredAt ? new Date(student.registeredAt).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
+        
+        // Personal
+        p.personalInfo?.nisn || "-",
+        p.personalInfo?.birthPlace || "-",
+        p.personalInfo?.birthDate || "-",
+        p.personalInfo?.gender || "-",
+        p.personalInfo?.religion || "-",
+        p.personalInfo?.phone || "-",
+        
+        // Address
+        p.addressInfo?.street || "-",
+        p.addressInfo?.rtRw || "-",
+        p.addressInfo?.village || "-",
+        p.addressInfo?.district || "-",
+        p.addressInfo?.city || "-",
+        p.addressInfo?.province || "-",
+        p.addressInfo?.postalCode || "-",
+        
+        // School Info
+        p.schoolInfo?.previousSchool || "-",
+        p.schoolInfo?.graduationYear || "-",
+        p.schoolInfo?.schoolAddress || "-",
+        p.schoolInfo?.ijazaNumber || "-",
+        
+        // Parents Info
+        p.parentsInfo?.fatherName || "-",
+        p.parentsInfo?.fatherJob || "-",
+        p.parentsInfo?.fatherPhone || "-",
+        p.parentsInfo?.motherName || "-",
+        p.parentsInfo?.motherJob || "-",
+        p.parentsInfo?.motherPhone || "-",
+        
+        // Pathway Info (10 Columns)
+        pathw.type || "-",
+        pathw.type === 'Zonasi' ? (pathw.zonasi?.distance || "-") : "-",
+        pathw.type === 'Afirmasi' ? (pathw.afirmasi?.hasKip || "-") : "-",
+        pathw.type === 'Afirmasi' ? (pathw.afirmasi?.kipFileName || "-") : "-",
+        pathw.type === 'Prestasi' ? (pathw.prestasi?.category || "-") : "-",
+        pathw.type === 'Prestasi' && pathw.prestasi?.category === 'Akademik' ? (pathw.prestasi.academicRank || "-") : "-",
+        pathw.type === 'Prestasi' && pathw.prestasi?.category === 'Akademik' ? (pathw.prestasi.academicAverage || "-") : "-",
+        pathw.type === 'Prestasi' && pathw.prestasi?.category === 'Non-Akademik' ? (pathw.prestasi.nonAcademicDescription || "-") : "-",
+        pathw.type === 'Mutasi' ? (pathw.mutasi?.originLocation || "-") : "-",
+        pathw.type === 'Mutasi' ? (pathw.mutasi?.targetDestination || "-") : "-"
+      ];
+      
+      const lastRow = sheet.getLastRow();
+      let foundRow = -1;
+      
+      // Cari jika id pendaftaran ini sudah ada di kolom A
+      if (lastRow >= 2) {
+        const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        for (let i = 0; i < ids.length; i++) {
+          if (ids[i][0].toString().trim() === student.pendaftaranId.toString().trim()) {
+            foundRow = i + 2; // Baris 1-indexed (Baris 2 adalah data awal pendaftar)
+            break;
+          }
+        }
+      }
+      
+      if (foundRow !== -1) {
+        // Edit baris yang sudah ada
+        sheet.getRange(foundRow, 1, 1, 39).setValues([rowData]);
+      } else {
+        // Tambahkan baris baru ke paling bawah
+        sheet.appendRow(rowData);
+      }
+      
+      // Rapikan dan warnai otomatis
+      try {
+        formatPpdbSheet();
+      } catch (fErr) {
+        // Safe logger ignore
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: 'success', 
+        message: 'Data siswa ' + student.name + ' berhasil disinkronkan langsung ke Google Sheets secara real-time!' 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return doGet(e);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'error', 
+      message: err.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 ```
 

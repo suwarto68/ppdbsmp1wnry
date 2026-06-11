@@ -351,6 +351,30 @@ export default function StudentDashboard({
     };
 
     onUpdateUser(updatedUser);
+
+    // Dynamic Google Sheet background syncing via Web App
+    const sheetId = localStorage.getItem('ppdb_google_sheet_id');
+    const appsScriptUrl = localStorage.getItem('ppdb_google_apps_script_url') || 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+
+    if (appsScriptUrl && sheetId) {
+      fetch(appsScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'submit_student',
+          spreadsheetId: sheetId,
+          student: updatedUser
+        })
+      }).then(() => {
+        console.log('Synchronized student registration to Google Sheet successfully.');
+      }).catch(err => {
+        console.warn('Google Sheets background sync failed:', err);
+      });
+    }
+
     setSubmitSuccess(true);
     setTimeout(() => {
       setSubmitSuccess(false);
