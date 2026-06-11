@@ -354,7 +354,13 @@ export default function StudentDashboard({
 
     // Dynamic Google Sheet background syncing via Web App
     const sheetId = localStorage.getItem('ppdb_google_sheet_id');
-    const appsScriptUrl = localStorage.getItem('ppdb_google_apps_script_url') || 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+    const oldDefault = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+    const newDefault = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
+    let appsScriptUrl = localStorage.getItem('ppdb_google_apps_script_url');
+    if (!appsScriptUrl || appsScriptUrl === oldDefault) {
+      appsScriptUrl = newDefault;
+      localStorage.setItem('ppdb_google_apps_script_url', newDefault);
+    }
 
     if (appsScriptUrl && sheetId) {
       fetch(appsScriptUrl, {

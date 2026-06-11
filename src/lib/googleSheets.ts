@@ -11,7 +11,7 @@ const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = typeof window !== 'undefined' ? sessionStorage.getItem('google_sheets_access_token') : null;
 let isSigningIn = false;
 
 export const initGoogleAuth = (
@@ -22,9 +22,16 @@ export const initGoogleAuth = (
     if (user) {
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
+      } else {
+        // Try to retrieve again
+        const storedToken = sessionStorage.getItem('google_sheets_access_token');
+        if (storedToken) {
+          cachedAccessToken = storedToken;
+          if (onAuthSuccess) onAuthSuccess(user, storedToken);
+        } else if (!isSigningIn) {
+          cachedAccessToken = null;
+          if (onAuthFailure) onAuthFailure();
+        }
       }
     } else {
       cachedAccessToken = null;
@@ -42,6 +49,7 @@ export const signInGoogleSheets = async (): Promise<{ user: FirebaseUser; access
       throw new Error('Gagal mendapatkan token akses dari Google.');
     }
     cachedAccessToken = credential.accessToken;
+    sessionStorage.setItem('google_sheets_access_token', credential.accessToken);
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error) {
     console.error('Sign in Google error:', error);
@@ -54,6 +62,7 @@ export const signInGoogleSheets = async (): Promise<{ user: FirebaseUser; access
 export const logoutGoogleSheets = async () => {
   await auth.signOut();
   cachedAccessToken = null;
+  sessionStorage.removeItem('google_sheets_access_token');
 };
 
 // Form Questions mapping as headers
@@ -194,20 +203,37 @@ export const syncDataToGoogleSheet = async (
   users: User[],
   accessToken: string
 ): Promise<void> => {
-  // Overwrite the first tab contents (A1:AC) with fresh header & row tuples
   const headerRow = SHEET_HEADERS;
   const dataRows = mapUsersToRows(users);
-  
   const values = [headerRow, ...dataRows];
 
-  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:AM?valueInputOption=USER_ENTERED`, {
+  // Dynamically resolve the first sheet name to support automatic locale translation (e.g. Lembar1, Sheet1, Work Area)
+  let firstSheetName = "Sheet1";
+  try {
+    const metadataRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    if (metadataRes.ok) {
+      const meta = await metadataRes.json();
+      if (meta.sheets && meta.sheets.length > 0) {
+        firstSheetName = meta.sheets[0].properties.title || "Sheet1";
+      }
+    }
+  } catch (metaErr) {
+    console.warn("Failed to dynamically fetch first sheet title, defaulting to Sheet1:", metaErr);
+  }
+
+  const rangeStr = `${firstSheetName}!A1:AM`;
+  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rangeStr)}?valueInputOption=USER_ENTERED`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      range: 'Sheet1!A1:AM',
+      range: rangeStr,
       majorDimension: 'ROWS',
       values: values
     })
@@ -215,6 +241,6 @@ export const syncDataToGoogleSheet = async (
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gagal menyinkronkan data ke Google Sheet: ${errText}`);
+    throw new Error(`Gagal menyinkronkan data ke Google Sheet (${rangeStr}): ${errText}`);
   }
 };

@@ -46,12 +46,20 @@ export default function AdminDashboard({
   const [sheetId, setSheetId] = useState<string | null>(localStorage.getItem('ppdb_google_sheet_id'));
   const [sheetUrl, setSheetUrl] = useState<string | null>(localStorage.getItem('ppdb_google_sheet_url'));
   const [lastSync, setLastSync] = useState<string | null>(localStorage.getItem('ppdb_last_sheets_sync'));
-  const [appsScriptUrl, setAppsScriptUrl] = useState<string>(
-    localStorage.getItem('ppdb_google_apps_script_url') || 
-    'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec'
-  );
+  const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
+    const stored = localStorage.getItem('ppdb_google_apps_script_url');
+    const oldDefault = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+    const newDefault = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
+    if (!stored || stored === oldDefault) {
+      localStorage.setItem('ppdb_google_apps_script_url', newDefault);
+      return newDefault;
+    }
+    return stored;
+  });
   
   const [isSyncing, setIsSyncing] = useState(false);
+  const [manualSheetInput, setManualSheetInput] = useState('');
+  const [isConnectingManual, setIsConnectingManual] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
 
   // Init Google authentication listener
@@ -174,6 +182,72 @@ export default function AdminDashboard({
       localStorage.removeItem('ppdb_google_sheet_id');
       localStorage.removeItem('ppdb_google_sheet_url');
       setSyncStatus({ type: 'idle', message: '' });
+    }
+  };
+
+  const handleConnectManualSheet = async () => {
+    if (!manualSheetInput.trim()) return;
+    setIsConnectingManual(true);
+    setSyncStatus({ type: 'idle', message: '' });
+    try {
+      let resolvedId = manualSheetInput.trim();
+      if (resolvedId.includes('/d/')) {
+        const matches = resolvedId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (matches && matches[1]) {
+          resolvedId = matches[1];
+        } else {
+          // Fallback if matched is complicated
+          const urlObj = new URL(resolvedId);
+          const pathSegments = urlObj.pathname.split('/');
+          const dIndex = pathSegments.indexOf('d');
+          if (dIndex !== -1 && pathSegments[dIndex + 1]) {
+            resolvedId = pathSegments[dIndex + 1];
+          }
+        }
+      } else if (resolvedId.includes('id=')) {
+        const urlParams = new URLSearchParams(resolvedId.split('?')[1]);
+        if (urlParams.has('id')) {
+          resolvedId = urlParams.get('id') || resolvedId;
+        }
+      }
+      
+      const resolvedUrl = `https://docs.google.com/spreadsheets/d/${resolvedId}`;
+      
+      // Perform verification syncing
+      if (googleToken) {
+        await syncDataToGoogleSheet(resolvedId, users, googleToken);
+      } else {
+        throw new Error("Lakukan login ke akun Google terlebih dahulu.");
+      }
+      
+      setSheetId(resolvedId);
+      setSheetUrl(resolvedUrl);
+      localStorage.setItem('ppdb_google_sheet_id', resolvedId);
+      localStorage.setItem('ppdb_google_sheet_url', resolvedUrl);
+      
+      const timestamp = new Date().toLocaleString('id-ID');
+      setLastSync(timestamp);
+      localStorage.setItem('ppdb_last_sheets_sync', timestamp);
+      
+      // Trigger Apps Script Web App Webhook
+      if (appsScriptUrl) {
+        try {
+          await fetch(appsScriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'sync', spreadsheetId: resolvedId, timestamp })
+          });
+        } catch (scriptErr) {
+          console.warn('Apps Script Webhook trigger non-blocking:', scriptErr);
+        }
+      }
+      
+      setSyncStatus({ type: 'success', message: 'Koneksi Sukses! Spreadsheet eksternal Anda berhasil disambungkan dan disinkronkan!' });
+      setManualSheetInput('');
+    } catch (e: any) {
+      setSyncStatus({ type: 'error', message: `Verifikasi spreadsheet gagal: ${e.message || 'ID tidak terjangkau atau format link salah.'}` });
+    } finally {
+      setIsConnectingManual(false);
     }
   };
   
@@ -952,22 +1026,52 @@ export default function AdminDashboard({
                     <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Pengaturan Spreadsheet</h4>
 
                     {!sheetId ? (
-                      <div className="flex flex-col gap-4">
-                        <p className="text-xs text-slate-500 leading-relaxed">
-                          Hubungkan dashboard ini dengan dokumen spreadsheet baru. Kami akan membuat file spreadsheet baru bernama <strong>"PPDB {schoolConfig.schoolName} - Data Pendaftar"</strong> di Google Drive Anda.
-                        </p>
-                        <button
-                          onClick={handleCreateNewSheet}
-                          disabled={isSyncing}
-                          className="w-full py-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
-                        >
-                          {isSyncing ? (
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Plus className="w-4 h-4" />
-                          )}
-                          <span>{isSyncing ? 'Mempersiapkan File...' : 'Buat Spreadsheet Baru'}</span>
-                        </button>
+                      <div className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-3">
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Hubungkan dashboard ini dengan dokumen spreadsheet baru. Kami akan membuat file spreadsheet baru bernama <strong>"PPDB {schoolConfig.schoolName} - Data Pendaftar"</strong> di Google Drive Anda.
+                          </p>
+                          <button
+                            onClick={handleCreateNewSheet}
+                            disabled={isSyncing}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-250 text-white disabled:text-slate-400 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            {isSyncing ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4" />
+                            )}
+                            <span>{isSyncing ? 'Mempersiapkan File...' : 'Buat Spreadsheet Baru secara Otomatis 🚀'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-slate-350 py-1">
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-widest leading-none">Atau Hubungkan Manual</span>
+                          <div className="h-px bg-slate-200 flex-1"></div>
+                        </div>
+
+                        <div className="flex flex-col gap-2.5 p-4 bg-slate-50 border border-slate-200 rounded-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
+                          <p className="text-[11px] text-slate-500 leading-normal">
+                            Masukkan <strong>ID</strong> atau <strong>Link URL</strong> Google Spreadsheet yang sudah ada untuk disambungkan secara manual:
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={manualSheetInput}
+                              onChange={(e) => setManualSheetInput(e.target.value)}
+                              placeholder="Masukkan LINK URL atau ID Spreadsheet..."
+                              className="flex-1 p-2 border border-slate-250 rounded-xl text-[10px] bg-white text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={handleConnectManualSheet}
+                              disabled={isConnectingManual || !manualSheetInput.trim()}
+                              className="px-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
+                            >
+                              {isConnectingManual ? 'Verifikasi...' : 'Hubungkan 🔗'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col gap-4">
