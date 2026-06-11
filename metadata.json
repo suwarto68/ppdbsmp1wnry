@@ -1,0 +1,6 @@
+{
+  "name": "PPDB SPMB Online",
+  "description": "Sistem Penerimaan Peserta Didik Baru (PPDB) / Seleksi Penerimaan Mahasiswa Baru (SPMB) Digital terintegrasi untuk calon siswa dan admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
