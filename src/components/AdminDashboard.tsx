@@ -46,6 +46,10 @@ export default function AdminDashboard({
   const [sheetId, setSheetId] = useState<string | null>(localStorage.getItem('ppdb_google_sheet_id'));
   const [sheetUrl, setSheetUrl] = useState<string | null>(localStorage.getItem('ppdb_google_sheet_url'));
   const [lastSync, setLastSync] = useState<string | null>(localStorage.getItem('ppdb_last_sheets_sync'));
+  const [appsScriptUrl, setAppsScriptUrl] = useState<string>(
+    localStorage.getItem('ppdb_google_apps_script_url') || 
+    'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec'
+  );
   
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
@@ -110,7 +114,20 @@ export default function AdminDashboard({
       setLastSync(timestamp);
       localStorage.setItem('ppdb_last_sheets_sync', timestamp);
       
-      setSyncStatus({ type: 'success', message: 'Spreadsheet baru berhasil dibuat dan data telah disinkronkan!' });
+      // Trigger Google Apps Script Web App
+      if (appsScriptUrl) {
+        try {
+          await fetch(appsScriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'sync', spreadsheetId: res.id, timestamp })
+          });
+        } catch (scriptErr) {
+          console.warn('Google Apps Script trigger non-blocking:', scriptErr);
+        }
+      }
+      
+      setSyncStatus({ type: 'success', message: 'Spreadsheet baru berhasil dibuat, data disinkronkan, & Apps Script dipicu!' });
     } catch (e: any) {
       setSyncStatus({ type: 'error', message: e.message || 'Gagal membuat Google Sheet.' });
     } finally {
@@ -127,7 +144,21 @@ export default function AdminDashboard({
       const timestamp = new Date().toLocaleString('id-ID');
       setLastSync(timestamp);
       localStorage.setItem('ppdb_last_sheets_sync', timestamp);
-      setSyncStatus({ type: 'success', message: 'Sinkronisasi berhasil! Data terbaru telah dikirim ke Google Sheets.' });
+      
+      // Trigger Google Apps Script Web App
+      if (appsScriptUrl) {
+        try {
+          await fetch(appsScriptUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({ action: 'sync', spreadsheetId: sheetId, timestamp })
+          });
+        } catch (scriptErr) {
+          console.warn('Google Apps Script trigger non-blocking:', scriptErr);
+        }
+      }
+      
+      setSyncStatus({ type: 'success', message: 'Sinkronisasi berhasil! Data terbaru telah dikirim & Web App Apps Script berhasil dipicu.' });
     } catch (e: any) {
       setSyncStatus({ type: 'error', message: e.message || 'Gagal menyinkronkan data.' });
     } finally {
@@ -944,6 +975,26 @@ export default function AdminDashboard({
                           <span className="text-[9px] font-black text-indigo-500 uppercase tracking-wider block">FILE SPREADSHEET TERINTEGRASI</span>
                           <span className="block font-bold text-xs text-indigo-950 mt-1 truncate">PPDB {schoolConfig.schoolName} - Data Pendaftar</span>
                           <span className="block text-[9px] text-slate-400 font-mono mt-1 select-all break-all overflow-hidden">{sheetId}</span>
+                        </div>
+
+                        {/* Google Apps Script Web App URL Input */}
+                        <div className="flex flex-col gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                          <label className="text-[9px] font-black text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            ⚙️ URL Web App Google Apps Script (Connected)
+                          </label>
+                          <input
+                            type="text"
+                            value={appsScriptUrl}
+                            onChange={(e) => {
+                              setAppsScriptUrl(e.target.value);
+                              localStorage.setItem('ppdb_google_apps_script_url', e.target.value);
+                            }}
+                            className="p-2 border border-slate-200 rounded-xl text-[10px] bg-white text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 w-full"
+                            placeholder="https://script.google.com/macros/s/.../exec"
+                          />
+                          <p className="text-[9px] text-slate-400 leading-normal">
+                            Menghubungkan Web App Google Apps Script untuk format layout 39 kolom dan trigger pengumuman email real-time.
+                          </p>
                         </div>
 
                         <div className="flex flex-col gap-2">
