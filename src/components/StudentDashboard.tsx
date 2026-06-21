@@ -354,10 +354,11 @@ export default function StudentDashboard({
 
     // Dynamic Google Sheet background syncing via Web App
     const sheetId = localStorage.getItem('ppdb_google_sheet_id');
-    const oldDefault = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
-    const newDefault = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
+    const oldDefault1 = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+    const oldDefault2 = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
+    const newDefault = 'https://script.google.com/macros/s/AKfycbz58cVhj0kWLtMKPQ5WW4qj2Lox0lTvTiU44W24fOrFokFnesMBSOxa4PAPZMN-aA5M/exec';
     let appsScriptUrl = localStorage.getItem('ppdb_google_apps_script_url');
-    if (!appsScriptUrl || appsScriptUrl === oldDefault) {
+    if (!appsScriptUrl || appsScriptUrl === oldDefault1 || appsScriptUrl === oldDefault2) {
       appsScriptUrl = newDefault;
       localStorage.setItem('ppdb_google_apps_script_url', newDefault);
     }

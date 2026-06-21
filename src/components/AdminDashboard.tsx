@@ -48,9 +48,11 @@ export default function AdminDashboard({
   const [lastSync, setLastSync] = useState<string | null>(localStorage.getItem('ppdb_last_sheets_sync'));
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
     const stored = localStorage.getItem('ppdb_google_apps_script_url');
-    const oldDefault = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
-    const newDefault = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
-    if (!stored || stored === oldDefault) {
+    const oldDefault1 = 'https://script.google.com/macros/s/AKfycbyZg8jTEPhv0v7_WE35C0ltN6h1ZsZxjfGWDi6XOCJ5McBQEK9MTbfn5psVmwOBlIfF4Q/exec';
+    const oldDefault2 = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycbyNzEJgfGwCrMmgOrH5ACGbjnnF3DBkDxagr71BFrdMaTulwQVTSEyUWngZW7jbvsdRmQ/exec';
+    const newDefault = 'https://script.google.com/macros/s/AKfycbz58cVhj0kWLtMKPQ5WW4qj2Lox0lTvTiU44W24fOrFokFnesMBSOxa4PAPZMN-aA5M/exec';
+    
+    if (!stored || stored === oldDefault1 || stored === oldDefault2) {
       localStorage.setItem('ppdb_google_apps_script_url', newDefault);
       return newDefault;
     }
