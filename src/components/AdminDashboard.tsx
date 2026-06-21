@@ -13,7 +13,8 @@ import {
   signInGoogleSheets, 
   logoutGoogleSheets, 
   createGoogleSheet, 
-  syncDataToGoogleSheet 
+  syncDataToGoogleSheet,
+  pullDataFromGoogleSheet
 } from '../lib/googleSheets';
 
 interface AdminDashboardProps {
@@ -60,6 +61,7 @@ export default function AdminDashboard({
   });
   
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
   const [manualSheetInput, setManualSheetInput] = useState('');
   const [isConnectingManual, setIsConnectingManual] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
@@ -260,6 +262,58 @@ export default function AdminDashboard({
       setSyncStatus({ type: 'error', message: `Verifikasi spreadsheet gagal: ${e.message || 'ID tidak terjangkau atau format link salah.'}` });
     } finally {
       setIsConnectingManual(false);
+    }
+  };
+
+  const handlePullFromGoogleSheet = async () => {
+    if (!googleToken || !sheetId) {
+      setSyncStatus({ type: 'error', message: 'Koneksi akun Google atau spreadsheet ID belum siap.' });
+      return;
+    }
+    setIsPulling(true);
+    setSyncStatus({ type: 'idle', message: '' });
+    try {
+      const updates = await pullDataFromGoogleSheet(sheetId, googleToken);
+      let matchCount = 0;
+      
+      updates.forEach(item => {
+        // Find the student matching this pendaftaranId or ID
+        const student = users.find(u => u.pendaftaranId === item.pendaftaranId || u.id === item.pendaftaranId);
+        if (student) {
+          const isStatusChanged = item.registrationStatus && item.registrationStatus !== student.registrationStatus;
+          const isNotesChanged = item.notes !== undefined && item.notes !== student.notes;
+          
+          if (isStatusChanged || isNotesChanged) {
+            const updatedUser: User = {
+              ...student,
+              registrationStatus: (item.registrationStatus as any) || student.registrationStatus,
+              notes: item.notes !== undefined ? item.notes : student.notes
+            };
+            onUpdateUser(updatedUser);
+            matchCount++;
+          }
+        }
+      });
+      
+      const timestamp = new Date().toLocaleString('id-ID');
+      setLastSync(timestamp);
+      localStorage.setItem('ppdb_last_sheets_sync', timestamp);
+      
+      if (matchCount > 0) {
+        setSyncStatus({ 
+          type: 'success', 
+          message: `Sukses menarik data! Berhasil menyinkronkan status/catatan untuk ${matchCount} siswa kembali ke aplikasi.` 
+        });
+      } else {
+        setSyncStatus({ 
+          type: 'success', 
+          message: 'Sukses menarik data! Seluruh status siswa di aplikasi sudah sinkron dengan baris Google Sheet.' 
+        });
+      }
+    } catch (e: any) {
+      setSyncStatus({ type: 'error', message: e.message || 'Gagal menarik data dari Google Sheet.' });
+    } finally {
+      setIsPulling(false);
     }
   };
   
@@ -1177,11 +1231,20 @@ export default function AdminDashboard({
                         <div className="flex flex-col gap-2">
                           <button
                             onClick={handleManualSync}
-                            disabled={isSyncing}
+                            disabled={isSyncing || isPulling}
                             className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                           >
                             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                            <span>{isSyncing ? 'Mengunggah Data...' : 'Sinkronkan Sekarang 🔄'}</span>
+                            <span>{isSyncing ? 'Mengunggah Data...' : 'Kirim / Push Data ke Sheet 📤'}</span>
+                          </button>
+
+                          <button
+                            onClick={handlePullFromGoogleSheet}
+                            disabled={isSyncing || isPulling}
+                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                          >
+                            <RefreshCw className={`w-4 h-4 ${isPulling ? 'animate-spin' : ''}`} />
+                            <span>{isPulling ? 'Menarik Data...' : 'Tarik Status dari Sheet (Sync Back) 📥'}</span>
                           </button>
 
                           {sheetUrl && (

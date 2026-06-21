@@ -244,3 +244,78 @@ export const syncDataToGoogleSheet = async (
     throw new Error(`Gagal menyinkronkan data ke Google Sheet (${rangeStr}): ${errText}`);
   }
 };
+
+export interface SheetUserUpdate {
+  pendaftaranId: string;
+  registrationStatus: string;
+  notes: string;
+}
+
+export const pullDataFromGoogleSheet = async (
+  spreadsheetId: string,
+  accessToken: string
+): Promise<SheetUserUpdate[]> => {
+  let firstSheetName = "Sheet1";
+  try {
+    const metadataRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets(properties(title))`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      }
+    });
+    if (metadataRes.ok) {
+      const meta = await metadataRes.json();
+      if (meta.sheets && meta.sheets.length > 0) {
+        firstSheetName = meta.sheets[0].properties.title || "Sheet1";
+      }
+    }
+  } catch (metaErr) {
+    console.warn("Failed to dynamically fetch first sheet title, defaulting to Sheet1:", metaErr);
+  }
+
+  const rangeStr = `${firstSheetName}!A2:E`;
+  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rangeStr)}?valueRenderOption=FORMATTED_VALUE`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Gagal menarik data dari Google Sheet (${rangeStr}): ${errText}`);
+  }
+
+  const data = await response.json();
+  const rows: string[][] = data.values || [];
+  
+  const updates: SheetUserUpdate[] = [];
+  rows.forEach((row) => {
+    const pendaftaranId = row[0]?.trim();
+    if (pendaftaranId) {
+      // Normalize any status to correct enum mapping if matches
+      let rawStatus = row[3]?.trim() || '';
+      let statusValue = rawStatus;
+      
+      const upperStatus = rawStatus.toUpperCase();
+      if (upperStatus === 'LULUS') {
+        statusValue = 'LULUS';
+      } else if (upperStatus === 'TIDAK_LULUS' || upperStatus === 'TIDAK LULUS') {
+        statusValue = 'TIDAK_LULUS';
+      } else if (upperStatus === 'DIVERIFIKASI' || upperStatus === 'VERIFIKASI_LENGKAP' || upperStatus === 'TERVERIFIKASI') {
+        statusValue = 'DIVERIFIKASI';
+      } else if (upperStatus === 'SEDANG_DIVERIFIKASI' || upperStatus === 'PROSES' || upperStatus === 'MENUNGU' || upperStatus === 'MENUNGGU VERIFIKASI') {
+        statusValue = 'SEDANG_DIVERIFIKASI';
+      } else if (upperStatus === 'BELUM_LENGKAP' || upperStatus === 'BELUM LENGKAP' || upperStatus === 'DRAF') {
+        statusValue = 'BELUM_LENGKAP';
+      }
+
+      updates.push({
+        pendaftaranId,
+        registrationStatus: statusValue,
+        notes: row[4]?.trim() || ''
+      });
+    }
+  });
+
+  return updates;
+};
+
