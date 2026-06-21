@@ -107,8 +107,21 @@ const SHEET_HEADERS = [
   "Rata-Rata Nilai (Prestasi Akademik)",
   "Deskripsi Prestasi (Prestasi Non-Akademik)",
   "Daerah/Instansi Asal (Jalur Mutasi)",
-  "Tujuan Alamat Tinggal (Jalur Mutasi)"
+  "Tujuan Alamat Tinggal (Jalur Mutasi)",
+
+  // Uploaded Files (5 Columns)
+  "Link Kartu Keluarga (KK)",
+  "Link Ijazah / SKL",
+  "Link Akte Kelahiran",
+  "Link Pas Foto 3x4",
+  "Link Berkas KIP / Siswa Miskin"
 ];
+
+const getFileUrl = (studentId: string, docKey: string, fileContent: string | null | undefined): string => {
+  if (!fileContent) return "-";
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  return `${origin}/?view_doc=${studentId}&doc=${docKey}`;
+};
 
 // Map a list of users to spreadsheet row arrays
 const mapUsersToRows = (users: User[]): string[][] => {
@@ -117,6 +130,10 @@ const mapUsersToRows = (users: User[]): string[][] => {
   return studentUsers.map(student => {
     const p = student.profile;
     const pathw = p?.pathwayInfo;
+    const docs = student.documents;
+    
+    // Check if KIP file exists
+    const kipUrlField = pathw?.afirmasi?.kipFileUrl;
     
     return [
       student.pendaftaranId || "-",
@@ -167,7 +184,14 @@ const mapUsersToRows = (users: User[]): string[][] => {
       pathw?.type === 'Prestasi' && pathw.prestasi?.category === 'Akademik' ? (pathw.prestasi.academicAverage || "-") : "-",
       pathw?.type === 'Prestasi' && pathw.prestasi?.category === 'Non-Akademik' ? (pathw.prestasi.nonAcademicDescription || "-") : "-",
       pathw?.type === 'Mutasi' ? (pathw.mutasi?.originLocation || "-") : "-",
-      pathw?.type === 'Mutasi' ? (pathw.mutasi?.targetDestination || "-") : "-"
+      pathw?.type === 'Mutasi' ? (pathw.mutasi?.targetDestination || "-") : "-",
+
+      // Uploaded Files (5 columns)
+      getFileUrl(student.id, 'familyCard', docs?.familyCard),
+      getFileUrl(student.id, 'graduationCertificate', docs?.graduationCertificate),
+      getFileUrl(student.id, 'birthCertificate', docs?.birthCertificate),
+      getFileUrl(student.id, 'photo', docs?.photo),
+      getFileUrl(student.id, 'kipFile', kipUrlField)
     ];
   });
 };
@@ -225,7 +249,7 @@ export const syncDataToGoogleSheet = async (
     console.warn("Failed to dynamically fetch first sheet title, defaulting to Sheet1:", metaErr);
   }
 
-  const rangeStr = `${firstSheetName}!A1:AM`;
+  const rangeStr = `${firstSheetName}!A1:AR`;
   const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(rangeStr)}?valueInputOption=USER_ENTERED`, {
     method: 'PUT',
     headers: {

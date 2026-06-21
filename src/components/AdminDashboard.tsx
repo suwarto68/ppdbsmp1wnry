@@ -119,6 +119,30 @@ export default function AdminDashboard({
     }
   };
 
+  const handleSyncError = async (e: any, defaultContextMsg: string) => {
+    const errorMsg = String(e?.message || e || '');
+    const is401 = errorMsg.includes('401') || 
+                  errorMsg.toUpperCase().includes('UNAUTHENTICATED') || 
+                  errorMsg.toUpperCase().includes('INVALID_GRANT') || 
+                  errorMsg.toUpperCase().includes('INVALID AUTHENTICATION CREDENTIALS');
+
+    if (is401) {
+      try {
+        await logoutGoogleSheets();
+      } catch (logoutErr) {
+        console.warn('Silent logout error:', logoutErr);
+      }
+      setGoogleUser(null);
+      setGoogleToken(null);
+      setSyncStatus({ 
+        type: 'error', 
+        message: 'Koneksi Sesi Google Anda telah kedaluwarsa atau tidak valid (Error 401: Unauthorized). Demi keamanan, sistem telah memutuskan sambungan aktif. Silakan hubungkan ulang akun Google Anda dengan mengklik "Hubungkan Akun Google" di bawah!' 
+      });
+    } else {
+      setSyncStatus({ type: 'error', message: `${defaultContextMsg}: ${e.message || e}` });
+    }
+  };
+
   const handleCreateNewSheet = async () => {
     if (!googleToken) return;
     setIsSyncing(true);
@@ -151,7 +175,7 @@ export default function AdminDashboard({
       
       setSyncStatus({ type: 'success', message: 'Spreadsheet baru berhasil dibuat, data disinkronkan, & Apps Script dipicu!' });
     } catch (e: any) {
-      setSyncStatus({ type: 'error', message: e.message || 'Gagal membuat Google Sheet.' });
+      await handleSyncError(e, 'Gagal membuat Google Sheet');
     } finally {
       setIsSyncing(false);
     }
@@ -182,7 +206,7 @@ export default function AdminDashboard({
       
       setSyncStatus({ type: 'success', message: 'Sinkronisasi berhasil! Data terbaru telah dikirim & Web App Apps Script berhasil dipicu.' });
     } catch (e: any) {
-      setSyncStatus({ type: 'error', message: e.message || 'Gagal menyinkronkan data.' });
+      await handleSyncError(e, 'Gagal menyinkronkan data');
     } finally {
       setIsSyncing(false);
     }
@@ -259,7 +283,7 @@ export default function AdminDashboard({
       setSyncStatus({ type: 'success', message: 'Koneksi Sukses! Spreadsheet eksternal Anda berhasil disambungkan dan disinkronkan!' });
       setManualSheetInput('');
     } catch (e: any) {
-      setSyncStatus({ type: 'error', message: `Verifikasi spreadsheet gagal: ${e.message || 'ID tidak terjangkau atau format link salah.'}` });
+      await handleSyncError(e, 'Verifikasi spreadsheet gagal');
     } finally {
       setIsConnectingManual(false);
     }
@@ -311,7 +335,7 @@ export default function AdminDashboard({
         });
       }
     } catch (e: any) {
-      setSyncStatus({ type: 'error', message: e.message || 'Gagal menarik data dari Google Sheet.' });
+      await handleSyncError(e, 'Gagal menarik data dari Google Sheet');
     } finally {
       setIsPulling(false);
     }
@@ -1596,13 +1620,17 @@ export default function AdminDashboard({
                             
                             {link ? (
                               <div className="w-full">
-                                <div className="w-full h-16 bg-slate-200 border border-slate-300 rounded-lg overflow-hidden mb-1.5">
-                                  <img 
-                                    src={link} 
-                                    className="w-full h-full object-cover" 
-                                    alt="preview" 
-                                    referrerPolicy="no-referrer"
-                                  />
+                                <div className="w-full h-16 bg-slate-200 border border-slate-300 rounded-lg overflow-hidden mb-1.5 flex items-center justify-center">
+                                  {fileName && (fileName.toLowerCase().endsWith('.pdf') || (link || '').startsWith('data:application/pdf')) ? (
+                                    <FileText className="w-8 h-8 text-red-600 animate-pulse" />
+                                  ) : (
+                                    <img 
+                                      src={link} 
+                                      className="w-full h-full object-cover" 
+                                      alt="preview" 
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
                                 </div>
                                 <span className="block text-[9px] text-slate-400 font-mono truncate">{fileName}</span>
                                 <button
@@ -1712,13 +1740,32 @@ export default function AdminDashboard({
                 </button>
               </div>
               
-              <div className="w-full max-h-[70vh] rounded-lg overflow-hidden border border-slate-200 flex justify-center bg-slate-900">
-                <img 
-                  src={showDocPreview.url} 
-                  alt="Zoom detail" 
-                  className="max-h-[68vh] object-contain w-auto h-auto transition-transform duration-300 hover:scale-110 cursor-zoom-in"
-                  referrerPolicy="no-referrer"
-                />
+              <div className="w-full h-[65vh] rounded-lg overflow-hidden border border-slate-200 flex justify-center bg-slate-900">
+                {showDocPreview.url.startsWith('data:application/pdf') || showDocPreview.url.toLowerCase().includes('.pdf') ? (
+                  <div className="w-full h-full flex flex-col items-center justify-between p-3 gap-3 bg-slate-50">
+                    <iframe 
+                      src={showDocPreview.url} 
+                      className="w-full h-[54vh] rounded-md border border-slate-300 bg-white"
+                      title={showDocPreview.label}
+                    />
+                    <a 
+                      href={showDocPreview.url} 
+                      download={`${showDocPreview.label.replace(/\s+/g, '_')}.pdf`}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 transform active:scale-95 transition-all shadow-md cursor-pointer"
+                    >
+                      Unduh Berkas PDF Resmi 📥
+                    </a>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                    <img 
+                      src={showDocPreview.url} 
+                      alt="Zoom detail" 
+                      className="max-h-[63vh] object-contain w-auto h-auto transition-transform duration-300 hover:scale-105 cursor-zoom-in"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

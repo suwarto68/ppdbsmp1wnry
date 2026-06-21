@@ -5,7 +5,8 @@ import LandingPage from './components/LandingPage';
 import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
-import { Shield } from 'lucide-react';
+import { Shield, FileText, X, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   syncUserToFirestore, 
   deleteUserFromFirestore, 
@@ -20,6 +21,71 @@ export default function App() {
   const [schoolConfig, setSchoolConfig] = useState<SchoolConfig>(defaultSchoolConfig);
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Dynamic Shared Document URL Previewer State
+  const [sharedDocPreview, setSharedDocPreview] = useState<{
+    userId: string;
+    docKey: string;
+    studentName: string;
+    url: string;
+    label: string;
+  } | null>(null);
+
+  // Parse URL Parameters for document sharing
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const viewDocUserId = params.get('view_doc');
+    const viewDocKey = params.get('doc');
+    
+    if (viewDocUserId && viewDocKey && users.length > 0) {
+      // Find the user with this ID
+      const student = users.find(u => u.id === viewDocUserId || u.pendaftaranId === viewDocUserId);
+      if (student) {
+        let fileUrl: string | null = null;
+        let label = viewDocKey;
+        
+        if (viewDocKey === 'familyCard') {
+          fileUrl = student.documents?.familyCard || null;
+          label = 'Kartu Keluarga (KK)';
+        } else if (viewDocKey === 'graduationCertificate') {
+          fileUrl = student.documents?.graduationCertificate || null;
+          label = 'Ijazah / SKL';
+        } else if (viewDocKey === 'birthCertificate') {
+          fileUrl = student.documents?.birthCertificate || null;
+          label = 'Akte Kelahiran';
+        } else if (viewDocKey === 'photo') {
+          fileUrl = student.documents?.photo || null;
+          label = 'Pas Foto 3x4';
+        } else if (viewDocKey === 'kipFile') {
+          fileUrl = student.profile?.pathwayInfo?.afirmasi?.kipFileUrl || null;
+          label = 'Berkas KIP / Siswa Miskin';
+        }
+
+        // Also check direct document mapping to cover potential layout differences
+        if (!fileUrl && student.documents) {
+          const docKeys = ['familyCard', 'graduationCertificate', 'birthCertificate', 'photo'] as const;
+          for (const k of docKeys) {
+            if (k.toLowerCase() === viewDocKey.toLowerCase()) {
+              fileUrl = student.documents[k];
+              break;
+            }
+          }
+        }
+        
+        if (fileUrl) {
+          setSharedDocPreview({
+            userId: student.id,
+            docKey: viewDocKey,
+            studentName: student.name,
+            url: fileUrl,
+            label
+          });
+        } else {
+          console.warn(`File for key "${viewDocKey}" is not yet uploaded by ${student.name}.`);
+        }
+      }
+    }
+  }, [users, window.location.search]);
   
   // NAV ROUTING: 'landing' | 'student' | 'admin'
   const [activeView, setActiveView] = useState<'landing' | 'student' | 'admin'>('landing');
@@ -264,6 +330,92 @@ export default function App() {
         onRegister={handleRegisterNewUser}
         defaultMode={authDefaultMode}
       />
+
+      {/* SHARED DOCUMENT PREVIEW MODAL */}
+      <AnimatePresence>
+        {sharedDocPreview && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setSharedDocPreview(null);
+                // Clear URL parameters elegantly
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-xs"
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden z-10 border border-slate-200 flex flex-col"
+            >
+              {/* Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                      Pemeriksa Berkas PPDB Online 🎓
+                    </h4>
+                    <span className="block text-slate-500 font-medium text-[11px] sm:text-xs mt-0.5">
+                      Siswa: <strong className="text-slate-800 font-bold">{sharedDocPreview.studentName}</strong> &bull; Jenis Berkas: <strong className="text-indigo-600 font-bold">{sharedDocPreview.label}</strong>
+                    </span>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    setSharedDocPreview(null);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }}
+                  className="p-1.5 hover:bg-slate-200 text-slate-400 hover:text-slate-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Viewer Wrapper */}
+              <div className="w-full h-[60vh] sm:h-[65vh] bg-slate-900 flex items-center justify-center relative">
+                {sharedDocPreview.url.startsWith('data:application/pdf') || sharedDocPreview.url.toLowerCase().includes('.pdf') ? (
+                  <div className="w-full h-full flex flex-col items-center justify-between p-3 gap-3 bg-slate-50">
+                    <iframe
+                      src={sharedDocPreview.url}
+                      className="w-full h-[52vh] sm:h-[55vh] rounded-md border border-slate-300 bg-white"
+                      title={sharedDocPreview.label}
+                    />
+                    <a
+                      href={sharedDocPreview.url}
+                      download={`${sharedDocPreview.studentName.replace(/\s+/g, '_')}_${sharedDocPreview.label.replace(/\s+/g, '_')}.pdf`}
+                      className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 transform active:scale-95 transition-all shadow-md cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Unduh File PDF Resmi 📥</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-4 overflow-hidden">
+                    <img
+                      src={sharedDocPreview.url}
+                      alt={sharedDocPreview.label}
+                      className="max-h-full max-w-full object-contain rounded-md transition-transform duration-300 hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 

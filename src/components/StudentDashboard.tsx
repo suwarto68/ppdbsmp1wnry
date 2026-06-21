@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   User as UserIcon, MapPin, GraduationCap, Users, FileCheck, CheckCircle2, 
   AlertTriangle, Clock, XCircle, ChevronRight, Upload, Info,
-  Save, Sparkles, LogOut, ArrowLeft, ArrowRight, Eye, Phone, Trash2
+  Save, Sparkles, LogOut, ArrowLeft, ArrowRight, Eye, Phone, Trash2, FileText
 } from 'lucide-react';
 import { StudentProfile, StudentDocuments, User, RegistrationStatus } from '../types';
 
@@ -227,10 +227,13 @@ export default function StudentDashboard({
   };
 
   // Simulated Document Upload trigger
-  const simulateUpload = (docType: keyof StudentDocuments, fileName: string) => {
+  const simulateUpload = (docType: keyof StudentDocuments, fileName: string, customUrl?: string) => {
     // Generate a beautiful, high-quality Unsplash image placeholder based on the docType for rich UI previews
     let mockUrl = "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=600&auto=format&fit=crop";
-    if (docType === 'photo') {
+    if (fileName && fileName.toLowerCase().endsWith('.pdf')) {
+      // PDF file format marker
+      mockUrl = "data:application/pdf;base64,JVBERi0xLjQKJbXtrscKMSAwIG9iagogIDw8IC9UeXBlIC9DYXRhbG9nCiAgICAgL1BhZ2VzIDIgMCBSCiAgPj4KZW5kb2JqCjIgMCBvYmoKICA8PCAvVHlwZSAvUGFnZXMKICAgICAvS2lkcyBbIDMgMCBSIF0KICAgICAvQ291bnQgMQogID4+CmVuZG9iagozIDAgb2JqCiAgPDwgL1R5cGUgL1BhZ2UKICAgICAvUGFyZW50IDIgMCBSCiAgICAgL01lZGlhQm94IFsgMCAwIDU5NSA4NDIgXQogICAgIC9SZXNvdXJjZXMgPDwgL0ZvbnQgPDwgL0YxIDQgMCBSID4+ID4+CiAgICAgL0NvbnRlbnRzIDUgMCBSCiAgPj4KZW5kb2JqCjQgMCBvYmoKICA8PCAvVHlwZSAvRm9udAogICAgIC9TdWJ0eXBlIC9UeXBlMQogICAgIC9CYXNlRm9udCAvSGVsdmV0aWNhCiAgPj4KZW5kb2JqCjUgMCBvYmoKICA8PCAvTGVuZ3RoIDQzID4+CnN0cmVhbQpCVAovRjEgMTIgVGYKODQgNzg0IFRkCihIZWxsbywgV29ybGQhKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxNyAwMDAwMCBuIAowMDAwMDAwMDgxIDAwMDAwIG4gCjAwMDAwMDAxNTAgMDAwMDAgbSamplePDF";
+    } else if (docType === 'photo') {
       mockUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150&h=200&fit=crop";
     } else if (docType === 'familyCard') {
       mockUrl = "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?q=80&w=600&auto=format&fit=crop";
@@ -242,7 +245,7 @@ export default function StudentDashboard({
 
     setDocuments(prev => ({
       ...prev,
-      [docType]: mockUrl,
+      [docType]: customUrl || mockUrl,
       [nameKey]: fileName
     }));
   };
@@ -261,14 +264,24 @@ export default function StudentDashboard({
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      simulateUpload(docType, file.name);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        simulateUpload(docType, file.name, base64String);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleFileSelector = (e: React.ChangeEvent<HTMLInputElement>, docType: keyof StudentDocuments) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      simulateUpload(docType, file.name);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        simulateUpload(docType, file.name, base64String);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -1514,13 +1527,17 @@ export default function StudentDashboard({
                           {fileIsUploaded ? (
                             <div className="flex items-center justify-between gap-3 bg-white border border-slate-200 p-3 rounded-xl mt-1">
                               <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className="w-10 h-12 bg-slate-100 rounded-md border border-slate-200 flex-shrink-0 overflow-hidden relative group">
-                                  <img 
-                                    src={documents[docKey] || ""} 
-                                    alt="preview" 
-                                    className="w-full h-full object-cover"
-                                    referrerPolicy="no-referrer"
-                                  />
+                                <div className="w-10 h-12 bg-slate-100 rounded-md border border-slate-200 flex-shrink-0 overflow-hidden relative group flex items-center justify-center">
+                                  {fileName && (fileName.toLowerCase().endsWith('.pdf') || (documents[docKey] || '').startsWith('data:application/pdf')) ? (
+                                    <FileText className="w-6 h-6 text-red-500 animate-pulse" />
+                                  ) : (
+                                    <img 
+                                      src={documents[docKey] || ""} 
+                                      alt="preview" 
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
                                 </div>
                                 <div className="overflow-hidden">
                                   <span className="block text-xs font-bold text-slate-800 truncate">{fileName}</span>
