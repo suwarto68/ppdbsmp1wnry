@@ -6,6 +6,14 @@ import AuthModal from './components/AuthModal';
 import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { Shield } from 'lucide-react';
+import { 
+  syncUserToFirestore, 
+  deleteUserFromFirestore, 
+  syncSchoolConfigToFirestore, 
+  subscribeToUsers, 
+  subscribeToSchoolConfig, 
+  bootstrapSeedDataIfEmpty 
+} from './lib/firebaseStore';
 
 export default function App() {
   // STATE MANAGEMENT
@@ -20,9 +28,41 @@ export default function App() {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authDefaultMode, setAuthDefaultMode] = useState<'login' | 'register'>('login');
 
-  // LOAD DATABASE FROM LOCAL STORAGE ON INIT
+  // LOAD DATABASE FROM FIRESTORE AND LOCAL STORAGE ON INIT
   useEffect(() => {
-    // 1. Load School Profiling
+    // 1. Bootstrap initial data to Firestore if completely empty (non-blocking)
+    bootstrapSeedDataIfEmpty(defaultUsers, defaultSchoolConfig);
+
+    // 2. Real-time subscriber for Users
+    const unsubscribeUsers = subscribeToUsers((firestoreUsers) => {
+      if (firestoreUsers.length > 0) {
+        setUsers(firestoreUsers);
+        localStorage.setItem('ppdb_users', JSON.stringify(firestoreUsers));
+
+        // Sync active user session with latest data if logged in
+        const currentActive = localStorage.getItem('ppdb_active_user');
+        if (currentActive) {
+          try {
+            const parsedActive = JSON.parse(currentActive) as User;
+            const updatedActive = firestoreUsers.find(u => u.id === parsedActive.id);
+            if (updatedActive) {
+              setCurrentUser(updatedActive);
+              localStorage.setItem('ppdb_active_user', JSON.stringify(updatedActive));
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    });
+
+    // 3. Real-time subscriber for School Config
+    const unsubscribeConfig = subscribeToSchoolConfig((firestoreConfig) => {
+      setSchoolConfig(firestoreConfig);
+      localStorage.setItem('ppdb_school_config', JSON.stringify(firestoreConfig));
+    });
+
+    // Fallbacks to Local Storage for instant startup render while fetching
     const savedConfig = localStorage.getItem('ppdb_school_config');
     if (savedConfig) {
       try {
@@ -35,7 +75,6 @@ export default function App() {
       localStorage.setItem('ppdb_school_config', JSON.stringify(defaultSchoolConfig));
     }
 
-    // 2. Load User accounts database
     const savedUsers = localStorage.getItem('ppdb_users');
     if (savedUsers) {
       try {
@@ -59,13 +98,11 @@ export default function App() {
       localStorage.setItem('ppdb_users', JSON.stringify(defaultUsers));
     }
 
-    // 3. Keep current logged-in session alive across refreshes
     const savedActiveSession = localStorage.getItem('ppdb_active_user');
     if (savedActiveSession) {
       try {
         const u = JSON.parse(savedActiveSession) as User;
         setCurrentUser(u);
-        // Automatically redirect to respective view if user is logged in
         if (u.role === 'admin') {
           setActiveView('admin');
         } else if (u.role === 'student') {
@@ -75,12 +112,18 @@ export default function App() {
         localStorage.removeItem('ppdb_active_user');
       }
     }
+
+    return () => {
+      unsubscribeUsers();
+      unsubscribeConfig();
+    };
   }, []);
 
-  // UPDATE STATE AND STORAGE WRAPPER
+  // UPDATE STATE AND STORAGE WRAPPER WITH CLOUD REWRITE
   const handleUpdateSchoolConfig = (newConfig: SchoolConfig) => {
     setSchoolConfig(newConfig);
     localStorage.setItem('ppdb_school_config', JSON.stringify(newConfig));
+    syncSchoolConfigToFirestore(newConfig);
   };
 
   const handleUpdateUser = (updatedUser: User) => {
@@ -94,18 +137,21 @@ export default function App() {
       setCurrentUser(updatedUser);
       localStorage.setItem('ppdb_active_user', JSON.stringify(updatedUser));
     }
+    syncUserToFirestore(updatedUser);
   };
 
   const handleDeleteUser = (userId: string) => {
     const updatedUsers = users.filter(u => u.id !== userId);
     setUsers(updatedUsers);
     localStorage.setItem('ppdb_users', JSON.stringify(updatedUsers));
+    deleteUserFromFirestore(userId);
   };
 
   const handleRegisterNewUser = (newUser: User) => {
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
     localStorage.setItem('ppdb_users', JSON.stringify(updatedUsers));
+    syncUserToFirestore(newUser);
   };
 
   // AUTH ACTIONS

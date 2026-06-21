@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User account schema representing either a student applicant or administrator.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string", "enum": ["student", "admin"] },
+        "registrationStatus": { "type": "string", "enum": ["BELUM_LENGKAP", "SEDANG_DIVERIFIKASI", "DIVERIFIKASI", "LULUS", "TIDAK_LULUS"] },
+        "pendaftaranId": { "type": "string" },
+        "registeredAt": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "SchoolConfig": {
+      "title": "SchoolConfig",
+      "description": "School details and configuration settings.",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "schoolProfile": { "type": "string" },
+        "motto": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "registrationStatus": { "type": "string", "enum": ["Buka", "Tutup"] },
+        "quota": { "type": "integer" }
+      },
+      "required": ["schoolName", "registrationStatus"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Stores user accounts and application profile details."
+    },
+    "/config/school_settings": {
+      "schema": "SchoolConfig",
+      "description": "Stores current general configuration settings of the school's PPDB portal."
+    }
+  }
+}

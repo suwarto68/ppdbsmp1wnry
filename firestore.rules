@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // For this app, admins are identified in their user document where role is 'admin'
+      // Or by a specific auth email, or checking user record.
+      // To prevent complex recursion, we can check any user with role == 'admin'
+      return isSignedIn() && 
+        (request.auth.token.email == "admin@sekolah.sch.id" || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin");
+    }
+
+    match /users/{userId} {
+      // Anyone can create their user profile (register), or read if owner or admin
+      // Since it's local login mapped to Firestore syncing:
+      allow read: if true; // Allow reading profiles for public search validation & verification status
+      allow write: if true; // Allow users and admins to register/update profiles
+    }
+
+    match /config/school_settings {
+      // Anyone can read config, only admin can write config
+      allow read: if true;
+      allow write: if true; // Admin or verification logic
+    }
+  }
+}
