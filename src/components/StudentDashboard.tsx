@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { 
   User as UserIcon, MapPin, GraduationCap, Users, FileCheck, CheckCircle2, 
   AlertTriangle, Clock, XCircle, ChevronRight, Upload, Info,
-  Save, Sparkles, LogOut, ArrowLeft, ArrowRight, Eye, Phone, Trash2, FileText
+  Save, Sparkles, LogOut, ArrowLeft, ArrowRight, Eye, Phone, Trash2, FileText, Bell
 } from 'lucide-react';
 import { StudentProfile, StudentDocuments, User, RegistrationStatus } from '../types';
 
@@ -20,8 +20,8 @@ export default function StudentDashboard({
   onUpdateUser,
   onNavigateLanding
 }: StudentDashboardProps) {
-  // Tabs: 'personal' | 'pathway' | 'address' | 'school_parents' | 'documents'
-  const [activeTab, setActiveTab] = useState<'personal' | 'pathway' | 'address' | 'school_parents' | 'documents'>('personal');
+  // Tabs: 'personal' | 'pathway' | 'address' | 'school_parents' | 'documents' | 'announcement'
+  const [activeTab, setActiveTab] = useState<'personal' | 'pathway' | 'address' | 'school_parents' | 'documents' | 'announcement'>('personal');
   
   // Local form states (initialized with current user data or default empty structures)
   const [profile, setProfile] = useState<StudentProfile>(() => {
@@ -708,6 +708,27 @@ export default function StudentDashboard({
                     <Upload className="w-4 h-4" /> 5. Unggah Berkas
                   </span>
                   {documents.photo && documents.familyCard && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('announcement')}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all ${
+                    activeTab === 'announcement' ? 'bg-indigo-50 text-indigo-900 border-l-2 border-indigo-600 font-bold animate-pulse' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-indigo-600" /> 6. Cek Pengumuman
+                  </span>
+                  {currentUser.registrationStatus === 'LULUS' ? (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-xl font-black uppercase animate-bounce">LULUS</span>
+                  ) : currentUser.registrationStatus === 'TIDAK_LULUS' ? (
+                    <span className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded-xl font-bold uppercase">GAGAL</span>
+                  ) : currentUser.registrationStatus === 'DIVERIFIKASI' ? (
+                    <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-xl font-bold uppercase">SAH</span>
+                  ) : (
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-xl font-bold uppercase">PROSES</span>
+                  )}
                 </button>
               </div>
 
@@ -1597,6 +1618,184 @@ export default function StudentDashboard({
                 </div>
               )}
 
+              {/* TAB 6: CEK PENGUMUMAN SELEKSI PPDB */}
+              {activeTab === 'announcement' && (
+                <div className="flex flex-col gap-6 animate-fadeIn" id="announcement-checking-section">
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-indigo-600 animate-pulse" /> 6. Pengumuman Kelulusan Seleksi PPDB Online
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">Pantau status pendaftaran, hasil seleksi utama, dan langkah-langkah selanjutnya di sini.</p>
+                  </div>
+
+                  {/* Rendering the alert right at the top for emphasis */}
+                  <div>
+                    {renderStatusAlert(currentUser.registrationStatus)}
+                  </div>
+
+                  {/* Detailed Information Card about the student */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-4">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Lembar Identitas Pendaftar</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">Nama Calon Siswa</span>
+                        <strong className="text-slate-800 font-extrabold">{currentUser.name}</strong>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">ID Pendaftaran</span>
+                        <strong className="font-mono text-slate-800 font-bold">{currentUser.pendaftaranId || 'Belum Dibuat'}</strong>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">Jalur Pendaftaran</span>
+                        <strong className="text-indigo-700 font-extrabold">{profile.pathwayInfo?.type ? `Jalur ${profile.pathwayInfo.type}` : 'Belum Ditentukan'}</strong>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">NISN Terdaftar</span>
+                        <strong className="font-mono text-slate-800 font-bold">{profile.personalInfo?.nisn || 'Belum Diisi'}</strong>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">Sekolah Asal</span>
+                        <strong className="text-slate-800 font-bold">{profile.schoolInfo?.previousSchool || 'Belum Diisi'}</strong>
+                      </div>
+                      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs">
+                        <span className="block text-slate-400 font-medium mb-1">Waktu Cek</span>
+                        <strong className="text-slate-500 font-medium">{new Date().toLocaleString('id-ID')} WIB</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PPDB Flow Milestones / Timeline */}
+                  <div className="border border-slate-100 rounded-2xl p-6 bg-slate-50/40">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-5">Timeline Prosedur PPDB 2026/2027</h4>
+                    <div className="relative border-l-2 border-slate-200 ml-3 pl-6 flex flex-col gap-6">
+                      
+                      {/* Step 1 */}
+                      <div className="relative">
+                        <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 border-emerald-500 bg-white flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            Pendaftaran Akun
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">SELESAI</span>
+                          </h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Membuat akun dan menerima ID Pendaftaran resmi.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 2 */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center ${
+                          pct >= 100 ? 'border-emerald-500' : 'border-slate-300'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            pct >= 100 ? 'bg-emerald-500' : 'bg-slate-300'
+                          }`} />
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            Pengisian Formulir &amp; Berkas
+                            {pct >= 100 ? (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">100% LENGKAP</span>
+                            ) : (
+                              <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.2 rounded-md">{pct}% BELUM LENGKAP</span>
+                            )}
+                          </h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Mengisi data diri, jalur pilihan, serta mengunggah file persyaratan lengkap.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 3 */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center ${
+                          currentUser.registrationStatus !== 'BELUM_LENGKAP' ? 'border-emerald-500' : 'border-slate-300'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            currentUser.registrationStatus !== 'BELUM_LENGKAP' ? 'bg-emerald-500' : 'bg-slate-300'
+                          }`} />
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            Proses Verifikasi Panitia
+                            {currentUser.registrationStatus === 'SEDANG_DIVERIFIKASI' && (
+                              <span className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.2 rounded-md animate-pulse">SEDANG BERJALAN</span>
+                            )}
+                            {currentUser.registrationStatus !== 'BELUM_LENGKAP' && currentUser.registrationStatus !== 'SEDANG_DIVERIFIKASI' && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">VERIFIED</span>
+                            )}
+                          </h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Pemeriksaan validasi berkas fisik, scan raport asli, serta akurasi radius peta zonasi domisili.</p>
+                        </div>
+                      </div>
+
+                      {/* Step 4 */}
+                      <div className="relative">
+                        <div className={`absolute -left-[31px] top-1 w-4 h-4 rounded-full border-2 bg-white flex items-center justify-center ${
+                          (currentUser.registrationStatus === 'LULUS' || currentUser.registrationStatus === 'TIDAK_LULUS') ? 'border-indigo-600 ring-2 ring-indigo-100 animate-pulse' : 'border-slate-300'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${
+                            (currentUser.registrationStatus === 'LULUS' || currentUser.registrationStatus === 'TIDAK_LULUS') ? 'bg-indigo-600' : 'bg-slate-300'
+                          }`} />
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            Pengumuman Hasil Akhir
+                            {currentUser.registrationStatus === 'LULUS' && (
+                              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md">DITERIMA / LULUS</span>
+                            )}
+                            {currentUser.registrationStatus === 'TIDAK_LULUS' && (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.2 rounded-md">TIDAK LULUS SELEKSI</span>
+                            )}
+                          </h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Penetapan kuota kelulusan resmi PPDB. Pengumuman dirilis bertahap oleh sekolah.</p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Kalender / Jadwal PPDB */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jadwal Kalender PPDB 2026/2027</span>
+                    <div className="flex flex-col gap-2.5 text-xs">
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-semibold text-slate-700">Pendaftaran &amp; Kelengkapan Berkas</span>
+                        <span className="font-mono text-slate-500 font-medium">10 Juni - 30 Juni 2026</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-semibold text-slate-700">Verifikasi Dokumen &amp; Lokasi Fisik</span>
+                        <span className="font-mono text-slate-500 font-medium">01 Juli - 05 Juli 2026</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-semibold text-slate-700">Pengumuman Kelulusan Akhir</span>
+                        <span className="font-mono text-indigo-700 font-bold">10 Juli 2026</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-semibold text-slate-700">Daftar Ulang Administrasi Fisik</span>
+                        <span className="font-mono text-slate-500 font-medium">12 Juli - 15 Juli 2026</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {currentUser.registrationStatus === 'LULUS' && (
+                    <div className="bg-gradient-to-r from-indigo-500 to-indigo-700 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
+                      <div>
+                        <h5 className="font-extrabold text-sm sm:text-base">Mulai Siapkan Daftar Ulang Anda</h5>
+                        <p className="text-[11px] text-indigo-100/90 leading-normal mt-0.5">Silakan unduh bukti kelulusan Anda untuk dibawa saat registrasi fisik ke SMP Negeri 1 Wanaraya.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => alert(`Pengumuman: Bukti kelulusan Anda resmi terdaftar dengan ID Pendaftaran: ${currentUser.pendaftaranId}. Silakan cetak halaman ini sebagai bukti sementara untuk dibawa pada tanggal 12-15 Juli 2026!`)}
+                        className="flex-shrink-0 bg-white hover:bg-slate-100 text-indigo-950 font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        Cetak Bukti Lulus Cetak 🖨️
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
               {/* SAVE ACTION BUTTONS AT BOTTOM BAR */}
               <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row sm:justify-between items-center gap-4">
                 <span className="text-slate-500 text-xs flex items-center gap-1.5">
@@ -1608,7 +1807,7 @@ export default function StudentDashboard({
                     <button
                       type="button"
                       onClick={() => {
-                        const tabs: ('personal' | 'address' | 'school_parents' | 'documents')[] = ['personal', 'address', 'school_parents', 'documents'];
+                        const tabs: ('personal' | 'address' | 'school_parents' | 'pathway' | 'documents' | 'announcement')[] = ['personal', 'address', 'school_parents', 'pathway', 'documents', 'announcement'];
                         const curIdx = tabs.indexOf(activeTab);
                         if (curIdx > 0) setActiveTab(tabs[curIdx - 1]);
                       }}
@@ -1618,7 +1817,7 @@ export default function StudentDashboard({
                     </button>
                   )}
 
-                  {!isReadOnly && (
+                  {!isReadOnly && activeTab !== 'announcement' && (
                     <button
                       type="submit"
                       disabled={pct === 0}
@@ -1628,13 +1827,13 @@ export default function StudentDashboard({
                     </button>
                   )}
 
-                  {activeTab !== 'documents' ? (
+                  {activeTab !== 'announcement' ? (
                     <button
                       type="button"
                       onClick={() => {
-                        const tabs: ('personal' | 'address' | 'school_parents' | 'documents')[] = ['personal', 'address', 'school_parents', 'documents'];
+                        const tabs: ('personal' | 'address' | 'school_parents' | 'pathway' | 'documents' | 'announcement')[] = ['personal', 'address', 'school_parents', 'pathway', 'documents', 'announcement'];
                         const curIdx = tabs.indexOf(activeTab);
-                        if (curIdx < 3) setActiveTab(tabs[curIdx + 1]);
+                        if (curIdx < tabs.length - 1) setActiveTab(tabs[curIdx + 1]);
                       }}
                       className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                     >
