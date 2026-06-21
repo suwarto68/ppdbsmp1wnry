@@ -61,6 +61,7 @@ export default function AdminDashboard({
   const [manualSheetInput, setManualSheetInput] = useState('');
   const [isConnectingManual, setIsConnectingManual] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
+  const [showDomainWhitelistHelper, setShowDomainWhitelistHelper] = useState(false);
 
   // Init Google authentication listener
   React.useEffect(() => {
@@ -88,7 +89,16 @@ export default function AdminDashboard({
         setSyncStatus({ type: 'success', message: 'Koneksi ke Akun Google berhasil diaktifkan!' });
       }
     } catch (e: any) {
-      setSyncStatus({ type: 'error', message: e.message || 'Gagal login Google.' });
+      const errStr = String(e?.code || e?.message || e);
+      if (errStr.includes('unauthorized-domain') || errStr.includes('auth/unauthorized-domain')) {
+        setSyncStatus({ 
+          type: 'error', 
+          message: 'Error (auth/unauthorized-domain): Domain Vercel / domain saat ini belum mendapatkan otorisasi resmi di Firebase Console Anda. Silakan tambahkan domain Anda ke daftar putih (Whitelist) Firebase.' 
+        });
+        setShowDomainWhitelistHelper(true);
+      } else {
+        setSyncStatus({ type: 'error', message: e.message || 'Gagal login Google.' });
+      }
     } finally {
       setIsLoggingInGoogle(false);
     }
@@ -1018,6 +1028,67 @@ export default function AdminDashboard({
                       </button>
                     </div>
                   )}
+
+                  {/* Whitelist Domain Helper Accordion */}
+                  <div className="border-t border-slate-100 pt-4 mt-1">
+                    <button
+                      onClick={() => setShowDomainWhitelistHelper(!showDomainWhitelistHelper)}
+                      className="w-full flex items-center justify-between text-left text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        🛠️ Solusi Error: Firebase auth/unauthorized-domain
+                      </span>
+                      <span className="text-xs transition-transform duration-200">
+                        {showDomainWhitelistHelper ? '▲ Sembunyikan' : '▼ Lihat Cara Perbaiki'}
+                      </span>
+                    </button>
+                    
+                    {showDomainWhitelistHelper && (
+                      <div className="mt-3 p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-[11px] text-slate-700 leading-relaxed flex flex-col gap-3.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                        <div className="flex items-start gap-2.5">
+                          <span className="text-base leading-none">💡</span>
+                          <p>
+                            Saat meng-hosting web di <strong>Vercel (vercel.com)</strong>, Firebase mengamankan popup login dengan membatasi domain asal. Anda wajib menambahkan domain vercel Anda ke dalam Whitelist Firebase Console agar login Google berhasil.
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 bg-white/80 p-3 rounded-xl border border-indigo-100/50">
+                          <span className="font-extrabold text-[10px] text-indigo-800 uppercase tracking-wider block">Langkah-langkah Memperbaiki:</span>
+                          <ol className="list-decimal list-inside flex flex-col gap-2 text-[11px] pl-0.5">
+                            <li>
+                              Buka <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline font-bold">Firebase Console</a>.
+                            </li>
+                            <li>
+                              Klik proyek Anda, lalu pilih tab <strong className="text-indigo-900">Authentication</strong> di bilah navigasi kiri.
+                            </li>
+                            <li>
+                              Klik tab <strong className="text-indigo-900">Settings</strong> (Setelan) di bilah bagian atas.
+                            </li>
+                            <li>
+                              Pilih menu samping <strong className="text-indigo-900">Authorized domains</strong> (Domain yang diizinkan).
+                            </li>
+                            <li>
+                              Klik tombol <strong className="text-indigo-800">Add domain</strong> (Tambahkan domain).
+                            </li>
+                            <li>
+                              Masukkan nama domain Vercel Anda, misalnya:
+                              <div className="mt-1 bg-slate-900 text-slate-100 font-mono text-[9px] p-2 rounded-lg relative group">
+                                <span className="select-all">*.vercel.app</span>
+                              </div>
+                              dan juga domain utama rilis Vercel Anda yang spesifik (misal: <code className="bg-slate-100 px-1 py-0.5 text-rose-600 rounded">nama-proyek.vercel.app</code>).
+                            </li>
+                            <li>
+                              Klik <strong className="text-indigo-800">Add</strong> untuk menyimpan. Coba muat ulang dan klik Login kembali!
+                            </li>
+                          </ol>
+                        </div>
+
+                        <p className="text-[10px] text-slate-500 italic">
+                          *Domain preview di Google AI Studio (<code className="font-mono text-[9px]">*.asia-southeast1.run.app</code>) telah diotorisasi secara bawaan.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Google Spreadsheet Control Box */}

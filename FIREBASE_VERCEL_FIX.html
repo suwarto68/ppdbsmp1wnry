@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panduan Solusi: Firebase auth/unauthorized-domain</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen py-10 px-4 md:px-8 selection:bg-indigo-500 selection:text-white">
+
+  <!-- Main Container -->
+  <div class="max-w-3xl mx-auto flex flex-col gap-8">
+    
+    <!-- Header -->
+    <div class="text-center flex flex-col items-center gap-3">
+      <div class="w-16 h-16 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-2xl flex items-center justify-center text-3xl shadow-xl animate-bounce">
+        🔥
+      </div>
+      <h1 class="text-2xl md:text-3xl font-black tracking-tight text-white mt-2">
+        Solusi Error Firebase Auth
+      </h1>
+      <p class="text-rose-400 font-mono text-sm uppercase tracking-widest bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
+        auth/unauthorized-domain
+      </p>
+      <p class="text-xs text-slate-400 max-w-lg leading-relaxed mt-1">
+        Saat mempublikasikan aplikasi ke <span class="text-indigo-400 font-bold">Vercel</span>, Google Authentication akan memicu penolakan dengan penanda ini karena domain hosting belum terdaftar di konsol Firebase Anda.
+      </p>
+    </div>
+
+    <!-- Quick Info Warning Box -->
+    <div class="p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-4">
+      <span class="text-2xl mt-0.5">⚠️</span>
+      <div class="flex flex-col gap-1.5 text-xs text-amber-250 leading-relaxed">
+        <span class="font-extrabold text-white text-sm">Mengapa Error Ini Terjadi?</span>
+        Keamanan Firebase menetapkan bahwa hanya domain yang diizinkan (whitelisted) yang diijinkan memicu pop-up otentikasi Google OAuth. Domain Vercel bersifat dinamis dan perlu diinputkan secara manual ke dalam panel Firebase Console.
+      </div>
+    </div>
+
+    <!-- Steps Timeline Card -->
+    <div class="bg-slate-800 border border-slate-700/50 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-6">
+      <h2 class="text-lg font-black text-white flex items-center gap-2">
+        <span>🛠️</span> Langkah Demi Langkah Mengatasi (Bahasa Indonesia)
+      </h2>
+
+      <!-- Steps -->
+      <ol class="flex flex-col gap-6">
+        
+        <!-- Step 1 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            1
+          </div>
+          <div class="flex flex-col gap-1 text-xs">
+            <span class="font-bold text-white text-sm">Buka Firebase Console</span>
+            <span class="text-slate-300">
+              Kunjungi portal resmi Firebase Console di 
+              <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" class="text-indigo-400 font-extrabold hover:underline">
+                console.firebase.google.com ↗
+              </a>
+              dan masuk menggunakan akun pemilik proyek.
+            </span>
+          </div>
+        </li>
+
+        <!-- Step 2 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            2
+          </div>
+          <div class="flex flex-col gap-1 text-xs">
+            <span class="font-bold text-white text-sm">Pilih Proyek & Akses Menu Autentikasi</span>
+            <span class="text-slate-300">
+              Klik nama proyek Anda di halaman utama. Setelah itu, pada menu sidebar sebelah kiri, cari dan klik menu <strong class="text-white">Authentication</strong>.
+            </span>
+          </div>
+        </li>
+
+        <!-- Step 3 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            3
+          </div>
+          <div class="flex flex-col gap-1 text-xs">
+            <span class="font-bold text-white text-sm">Masuk ke Setelan (Settings)</span>
+            <span class="text-slate-300">
+              Di halaman Authentication, perhatikan tab menu di bagian atas halaman (Users, Sign-in method, Templates, Settings). Klik tab <strong class="text-white">Settings</strong>.
+            </span>
+          </div>
+        </li>
+
+        <!-- Step 4 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            4
+          </div>
+          <div class="flex flex-col gap-1 text-xs">
+            <span class="font-bold text-white text-sm">Pilih Authorized Domains</span>
+            <span class="text-slate-300">
+              Di bagian menu navigasi sisi kiri di dalam tab Settings tersebut, klik menu <strong class="text-white">Authorized domains</strong> (Domain yang diizinkan).
+            </span>
+          </div>
+        </li>
+
+        <!-- Step 5 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            5
+          </div>
+          <div class="flex flex-col gap-1.5 text-xs">
+            <span class="font-bold text-white text-sm">Tambahkan Domain Vercel Anda</span>
+            <span class="text-slate-300">
+              Klik tombol <strong class="text-white">Add domain</strong> (Tambahkan domain). Masukkan nilai domain Vercel Anda.
+            </span>
+            
+            <div class="mt-2 flex flex-col gap-2.5">
+              <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Domain yang Direkomendasikan Ditambahkan:</span>
+              
+              <div class="flex flex-col gap-2 font-mono text-[11px]">
+                <div class="flex items-center justify-between bg-slate-900 border border-slate-700 p-2.5 rounded-xl group">
+                  <span class="text-indigo-300 select-all">*.vercel.app</span>
+                  <button onclick="copyToClipboard('*.vercel.app')" class="text-[10px] text-slate-400 hover:text-white font-sans bg-slate-800 px-2 py-1 rounded-md transition-colors">
+                    Salin
+                  </button>
+                </div>
+                
+                <div class="flex items-center justify-between bg-slate-900 border border-slate-700 p-2.5 rounded-xl group/item">
+                  <span class="text-slate-400 select-all italic text-[10px]">url-proyek-anda.vercel.app</span>
+                  <span class="text-[9px] text-slate-500 font-sans italic pr-2">Ganti dengan URL Vercel Asli Anda</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </li>
+
+        <!-- Step 6 -->
+        <li class="flex gap-4">
+          <div class="w-8 h-8 rounded-full bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-extrabold flex items-center justify-center shrink-0 text-sm mt-0.5">
+            6
+          </div>
+          <div class="flex flex-col gap-1 text-xs">
+            <span class="font-bold text-white text-sm">Simpan & Selesai!</span>
+            <span class="text-slate-300">
+              Klik <strong class="text-indigo-400">Add</strong>. Setelah tersimpan, tunggu sekitar 1-2 menit agar perubahan terpropagasi penuh pada cache CDN Google. Silakan segarkan halaman Vercel Anda dan klik Hubungkan Akun kembali.
+            </span>
+          </div>
+        </li>
+
+      </ol>
+    </div>
+
+    <!-- Additional Troubleshooting Tip -->
+    <div class="p-6 bg-slate-800 border border-slate-700/30 rounded-3xl flex flex-col gap-3">
+      <span class="font-extrabold text-sm text-white">💡 Tips Tambahan: Ekspor Google Sheets</span>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Masalah ini hanya mempengaruhi tombol login di aplikasi web Anda. Sinkronisasi data latar belakang yang diaktifkan di sisi siswa (menggunakan Google Apps Script) akan tetap berjalan dengan aman jika URL Web App milik Apps Script sudah diperbarui dengan benar.
+      </p>
+    </div>
+
+    <!-- Footer Copyright -->
+    <p class="text-center text-[10px] text-slate-500 tracking-wide font-mono mt-4">
+      B2864B13-E1CC-4AC5-90A0-217175DB6D77 • Dibuat oleh Google AI Studio Coding Assistant
+    </p>
+
+  </div>
+
+  <script>
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(function() {
+        alert("Berhasil disalin: " + text);
+      }, function(err) {
+        console.error('Gagal menyalin: ', err);
+      });
+    }
+  </script>
+</body>
+</html>
